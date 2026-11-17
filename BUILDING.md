@@ -1,23 +1,28 @@
-# Building Steady for Android
+# Building Steady
 
-Requirements: JDK 17, Android SDK platform 35, and Android SDK Build Tools 35.0.0. The Gradle wrapper pins Gradle 8.11.1 and verifies its distribution checksum.
+Requirements: JDK 17, Android SDK platform 35, and Build Tools 35.0.0. The Gradle wrapper pins Gradle 8.11.1 and checks its distribution checksum.
 
-Set `JAVA_HOME` to your JDK and `ANDROID_HOME` to your Android SDK, or specify `sdk.dir` in your local `local.properties` file. Do not commit local paths or signing credentials.
+Set JAVA_HOME and ANDROID_HOME, or set sdk.dir in local.properties. Keep local configuration and signing credentials out of Git.
 
-On Windows:
+## Demo variants
+
+- fixed: corrected charcoal interface, application ID com.steady.scheduler.preview2.fixed.dev in debug builds.
+- studio: selected warm-light design, displayed as Steady, application ID com.steady.scheduler.preview2.studio.dev in debug builds.
+
+They install alongside one another and alongside the existing app. Each has its own data. All task, project, goal, journal, and workout logic is shared.
+
+## Build and test
+
+Windows:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
+.\gradlew.bat testFixedDebugUnitTest testStudioDebugUnitTest lintFixedDebug lintStudioDebug assembleFixedDebug assembleStudioDebug
 ```
 
-On macOS or Linux:
+On macOS or Linux, use `sh gradlew` with the same task names.
 
-```sh
-sh gradlew testDebugUnitTest lintDebug assembleDebug
-```
+APKs are under app/build/outputs/apk/fixed/debug and app/build/outputs/apk/studio/debug. These are debug-signed design demos, not Google Play release artifacts.
 
-The preview APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Debug builds use the application ID `com.steady.scheduler.preview2.dev` so they can coexist with the original app. Their data is separate.
+DemoLayoutTest renders all six pages with empty and sample data at 360 by 800 pixels, plus Today and Journal at 320 by 760 with 130% font scaling. Images are under app/build/previews/fixed and app/build/previews/studio. These are Robolectric native renderings, not physical-device screenshots. Sample data is only inserted by tests and is not bundled into the APK.
 
-Release builds use `com.steady.scheduler.preview2`. Updating an existing installation requires the original signing key; a newly generated key cannot replace it. Release signing and Google Play distribution are not configured here.
-
-Tests cover task-list validation, goal start/completion, journal grouping and editing, version 3 database migration, scheduling boundaries, and journal export escaping/path confinement. These checks do not replace physical-device testing of alarms, notifications, keyboard layout, or accessibility.
+Regression tests cover task times, goal start/completion, Signal/Noise inheritance, journal grouping and migration, exports, and task creation controls. Device testing is still required for system UI, notifications, alarms, and animation feel.

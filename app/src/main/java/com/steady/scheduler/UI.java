@@ -13,14 +13,16 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public final class UI {
-    public static final int GOLD = 0xFFE8BE65;
-    public static final int BG = 0xFF14191F;
-    public static final int CARD = 0xFF1D252D;
-    public static final int GREEN = 0xFF8FD3C5;
-    public static final int LINE = 0xFF35414B;
-    public static final int MUTED = 0xFFA9B5BE;
-    public static final int RED = 0xFFFFA7A1;
-    public static final int TEXT = 0xFFF2F1EB;
+    public static final int GOLD = BuildConfig.REDESIGN ? 0xFF865D16 : 0xFFE8BE65;
+    public static final int BG = BuildConfig.REDESIGN ? 0xFFF6F3EC : 0xFF14191F;
+    public static final int CARD = BuildConfig.REDESIGN ? 0xFFFFFEFA : 0xFF1D252D;
+    public static final int GREEN = BuildConfig.REDESIGN ? 0xFF16685E : 0xFF8FD3C5;
+    public static final int LINE = BuildConfig.REDESIGN ? 0xFFDCDDD4 : 0xFF35414B;
+    public static final int MUTED = BuildConfig.REDESIGN ? 0xFF616C68 : 0xFFA9B5BE;
+    public static final int RED = BuildConfig.REDESIGN ? 0xFFAB3934 : 0xFFFFA7A1;
+    public static final int TEXT = BuildConfig.REDESIGN ? 0xFF192B28 : 0xFFF2F1EB;
+    public static final int TINT = BuildConfig.REDESIGN ? 0xFFE5EEE7 : 0xFF263B40;
+    public static final int BORDER = BuildConfig.REDESIGN ? 0xFFDCDDD4 : 0x38FFFFFF;
     public final Activity a;
 
     public UI(Activity a) {
@@ -74,7 +76,7 @@ public final class UI {
         LinearLayout v = col();
         v.setPadding(dp(18.0f), dp(18.0f), dp(18.0f), dp(18.0f));
         GradientDrawable border = bg(CARD, 18);
-        border.setStroke(dp(1.0f), 0x24FFFFFF);
+        border.setStroke(dp(1.0f), BORDER);
         v.setBackground(border);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = dp(12.0f);
@@ -88,13 +90,14 @@ public final class UI {
         b.setAllCaps(false);
         b.setTextSize(15.0f);
         b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        b.setTextColor(primary ? BG : TEXT);
+        b.setTextColor(primary ? (BuildConfig.REDESIGN ? 0xFFFFFFFF : BG) : TEXT);
         GradientDrawable surface=bg(primary ? GREEN : CARD, 12);
-        if(!primary)surface.setStroke(dp(1),0x30FFFFFF);
+        if(!primary)surface.setStroke(dp(1),BORDER);
         b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x26FFFFFF),surface,null));
         b.setBackgroundTintList(null);b.setStateListAnimator(null);
         b.setMinWidth(0);b.setMinimumWidth(0);
-        b.setPadding(dp(14.0f), dp(8.0f), dp(14.0f), dp(8.0f));
+        b.setPadding(dp(16),dp(10),dp(16),dp(10));
+        b.setGravity(android.view.Gravity.CENTER);b.setIncludeFontPadding(false);
         b.setMinHeight(dp(48.0f));
         b.setMinimumHeight(dp(48.0f));
         b.setOnClickListener(new View.OnClickListener() {
@@ -108,12 +111,14 @@ public final class UI {
 
     public Button chip(String label, boolean selected, Runnable action) {
         Button button=button(label,false,action);
-        button.setTextSize(13);button.setTextColor(selected ? TEXT : MUTED);
-        button.setPadding(dp(12),0,dp(12),0);
-        GradientDrawable surface=bg(selected ? 0xFF32434A : CARD,18);
-        surface.setStroke(dp(1),selected ? 0x668FD3C5 : 0x20FFFFFF);
-        android.graphics.drawable.InsetDrawable inset=new android.graphics.drawable.InsetDrawable(surface,0,dp(6),0,dp(6));
-        button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x268FD3C5),inset,null));
+        button.setTextSize(14);button.setTextColor(selected ? GREEN : MUTED);
+        GradientDrawable surface=bg(selected ? TINT : CARD,16);
+        surface.setStroke(dp(1), selected ? GREEN : BORDER);
+        android.graphics.drawable.InsetDrawable inset=new android.graphics.drawable.InsetDrawable(surface,0,dp(5),0,dp(5));
+        button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x228FD3C5),inset,null));
+        // A background replacement can reset TextView padding on real Android devices.
+        button.setPadding(dp(16),dp(5),dp(16),dp(5));
+        button.setMaxLines(1);button.setMinWidth((int)Math.ceil(button.getPaint().measureText(label))+dp(32));
         button.setSelected(selected);return button;
     }
 
@@ -144,27 +149,14 @@ public final class UI {
         p.addView(b, new LinearLayout.LayoutParams(-2, -2));
     }
 
-    public LinearLayout empty(LinearLayout linearLayout, int icon, String title, String description, boolean border) {
-        LinearLayout c = col();
-        c.setGravity(17);
-        c.setPadding(dp(20.0f), dp(36.0f), dp(20.0f), dp(36.0f));
-        if (border) {
-            GradientDrawable d = bg(BG, 20);
-            d.setStroke(dp(1.0f), LINE);
-            c.setBackground(d);
-        }
-        linearLayout.addView(c, new LinearLayout.LayoutParams(-1, -2));
-        c.addView(new NavIcon(this.a, icon, GREEN), new LinearLayout.LayoutParams(dp(36.0f), dp(36.0f)));
-        space(c, 24);
-        TextView t = bold(title, 22, TEXT);
-        t.setGravity(17);
-        c.addView(t);
-        space(c, 16);
-        TextView desc = text(description, 15, MUTED);
-        desc.setGravity(17);
-        c.addView(desc);
-        space(c, 20);
-        return c;
+    public LinearLayout empty(LinearLayout parent, int icon, String title, String description, boolean border) {
+        LinearLayout card=row();card.setGravity(android.view.Gravity.TOP);
+        card.setPadding(dp(16),dp(18),dp(16),dp(18));
+        GradientDrawable surface=bg(BuildConfig.REDESIGN ? TINT : CARD,16);surface.setStroke(dp(1),BORDER);card.setBackground(surface);
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.bottomMargin=dp(16);parent.addView(card,params);
+        card.addView(new NavIcon(a,icon,GREEN),new LinearLayout.LayoutParams(dp(28),dp(28)));
+        LinearLayout copy=col();copy.setPadding(dp(14),0,0,0);weight(card,copy);
+        copy.addView(bold(title,18,TEXT));space(copy,6);copy.addView(text(description,14,MUTED));return card;
     }
 
     public void weight(LinearLayout row, View view) {
@@ -180,7 +172,9 @@ public final class UI {
         e.setTextColor(TEXT);
         e.setTextSize(16.0f);
         e.setSingleLine(!multiline);
-        e.setBackground(bg(BG, 9));
+        GradientDrawable field=bg(CARD,12);field.setStroke(dp(1),LINE);
+        e.setBackground(field);e.setBackgroundTintList(null);e.setMinHeight(dp(48));
+        e.setHintTextColor(MUTED);
         e.setPadding(dp(12.0f), dp(12.0f), dp(12.0f), dp(12.0f));
         if (multiline) {
             e.setMinLines(3);
@@ -191,6 +185,15 @@ public final class UI {
         p.addView(e, ep);
         space(p, 12);
         return e;
+    }
+
+    public EditText search(LinearLayout parent,String value) {
+        EditText query=new EditText(a);query.setText(value);query.setTextSize(15);query.setTextColor(TEXT);query.setHintTextColor(MUTED);
+        query.setSingleLine(true);query.setHint("Search your library");query.setContentDescription("Search journal entries");
+        query.setInputType(android.text.InputType.TYPE_CLASS_TEXT);query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        GradientDrawable surface=bg(CARD,12);surface.setStroke(dp(1),LINE);query.setBackground(surface);query.setBackgroundTintList(null);
+        query.setPadding(dp(16),dp(12),dp(16),dp(12));query.setMinHeight(dp(48));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(12);lp.bottomMargin=dp(12);parent.addView(query,lp);return query;
     }
 
     static /* synthetic */ WindowInsets lambda$insets$1(View v, WindowInsets w) {

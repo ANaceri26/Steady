@@ -31,7 +31,7 @@ public final class ProgressRing extends View {
         this.p.setColor(UI.LINE);
         c.drawOval(oval, this.p);
         this.p.setColor(UI.GREEN);
-        float progress = this.total == 0 ? 0.0f : this.done / this.total;
+        float progress = this.total == 0 ? 0.0f : (float) this.done / this.total;
         c.drawArc(oval, -90.0f, progress * 360.0f, false, this.p);
         this.p.setStyle(Paint.Style.FILL);
         this.p.setTextAlign(Paint.Align.CENTER);

@@ -69,6 +69,9 @@ public class MainActivity extends Activity {
     private GymScreen gym;
     private JournalScreen journalScreen;
     private LinearLayout root;
+    private ScrollView contentScroll;
+    private int renderedTab=-1;
+    private boolean animateNext;
     private Store store;
     private UI ui;
     private int tab = 0;
@@ -181,7 +184,9 @@ public class MainActivity extends Activity {
 
     private void heading(String eyebrow, String title, String desc) {
         this.ui.eyebrow(this.body, eyebrow);
-        this.body.addView(this.ui.bold(title, 28, UI.TEXT));
+        TextView pageTitle=ui.bold(title,BuildConfig.REDESIGN?32:28,UI.TEXT);
+        if(BuildConfig.REDESIGN)pageTitle.setTypeface(android.graphics.Typeface.create("serif",android.graphics.Typeface.NORMAL));
+        body.addView(pageTitle);
         if (!desc.isEmpty()) {
             this.ui.space(this.body, 6);
             this.body.addView(this.ui.text(desc, 15, UI.MUTED));
@@ -190,107 +195,48 @@ public class MainActivity extends Activity {
     }
 
     public void render() {
-        this.root = this.ui.col();
-        this.root.setBackgroundColor(UI.BG);
-        this.ui.insets(this.root);
-        setContentView(this.root);
-        LinearLayout top = this.ui.row();
-        top.setPadding(this.ui.dp(18.0f), this.ui.dp(12.0f), this.ui.dp(18.0f), this.ui.dp(12.0f));
-        this.root.addView(top);
-        top.addView(new NavIcon(this, 6, UI.GREEN), new LinearLayout.LayoutParams(this.ui.dp(25.0f), this.ui.dp(25.0f)));
-        TextView brand = this.ui.bold("steady", 27, UI.TEXT);
-        brand.setPadding(this.ui.dp(10.0f), 0, 0, 0);
-        top.addView(brand);
-        TextView dot = this.ui.bold(" •", 24, UI.GREEN);
-        top.addView(dot);
-        View spacer = new View(this);
-        top.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1.0f));
-        FrameLayout setting = new FrameLayout(this);
-        setting.setContentDescription("Setup and settings");
-        setting.setBackground(this.ui.bg(UI.BG, 12));
-        NavIcon gear = new NavIcon(this, 5, this.tab == 5 ? UI.GREEN : UI.MUTED);
-        FrameLayout.LayoutParams gearSize = new FrameLayout.LayoutParams(this.ui.dp(24.0f), this.ui.dp(24.0f), 17);
-        setting.addView(gear, gearSize);
-        top.addView(setting, new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
-        setting.setOnClickListener(new View.OnClickListener() {
-            @Override // android.view.View.OnClickListener
-            public final void onClick(View view) {
-                MainActivity.this.lambda$render$0(view);
-            }
-        });
-        View line = new View(this);
-        line.setBackgroundColor(UI.LINE);
-        this.root.addView(line, new LinearLayout.LayoutParams(-1, this.ui.dp(1.0f)));
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        this.root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1.0f));
-        this.body = this.ui.col();
-        int i = 0;
-        this.body.setPadding(this.ui.dp(18.0f), this.ui.dp(20.0f), this.ui.dp(18.0f), this.ui.dp(24.0f));
-        scroll.addView(this.body);
-        if (this.tab == 0) {
-            today();
-        } else if (this.tab == 1) {
-            projects();
-        } else if (this.tab == 2) {
-            goals();
-        } else if (this.tab == 3) {
-            journal();
-        } else if (this.tab == 4) {
-            this.gym.render(this.body);
-        } else {
-            setup();
+        int previousScroll=contentScroll!=null && renderedTab==tab ? contentScroll.getScrollY() : 0;
+        renderedTab=tab;
+        root=ui.col();root.setBackgroundColor(UI.BG);ui.insets(root);setContentView(root);
+        LinearLayout top=ui.row();top.setPadding(ui.dp(20),ui.dp(BuildConfig.REDESIGN?4:8),ui.dp(12),ui.dp(4));root.addView(top);
+        top.addView(new NavIcon(this,6,UI.GREEN),new LinearLayout.LayoutParams(ui.dp(23),ui.dp(23)));
+        TextView brand=ui.bold("steady",BuildConfig.REDESIGN?20:24,UI.TEXT);brand.setPadding(ui.dp(10),0,0,0);ui.weight(top,brand);
+        FrameLayout settings=new FrameLayout(this);settings.setContentDescription("Setup and settings");
+        settings.addView(new NavIcon(this,5,UI.MUTED),new FrameLayout.LayoutParams(ui.dp(22),ui.dp(22),android.view.Gravity.CENTER));
+        top.addView(settings,new LinearLayout.LayoutParams(ui.dp(48),ui.dp(48)));settings.setOnClickListener(v->navigateTo(5));
+        if(!BuildConfig.REDESIGN){View divider=new View(this);divider.setBackgroundColor(UI.LINE);root.addView(divider,new LinearLayout.LayoutParams(-1,ui.dp(1)));}
+        contentScroll=new ScrollView(this);contentScroll.setFillViewport(true);contentScroll.setClipToPadding(false);
+        root.addView(contentScroll,new LinearLayout.LayoutParams(-1,0,1));body=ui.col();body.setPadding(ui.dp(20),ui.dp(16),ui.dp(20),ui.dp(24));contentScroll.addView(body);
+        if(tab==0)today();else if(tab==1)projects();else if(tab==2)goals();else if(tab==3)journal();else if(tab==4)gym.render(body);else setup();
+        if(BuildConfig.REDESIGN && tab==0){LinearLayout dock=ui.row();dock.setPadding(ui.dp(16),ui.dp(8),ui.dp(16),ui.dp(8));dock.setBackgroundColor(UI.BG);root.addView(dock);creationActions(dock);}
+        LinearLayout nav=ui.row();nav.setPadding(ui.dp(8),ui.dp(6),ui.dp(8),ui.dp(8));nav.setBackgroundColor(UI.CARD);root.addView(nav);
+        String[] labels={"Today","Projects","Goals","Journal","Gym"};
+        for(int n=0;n<labels.length;n++){
+            final int selected=n;LinearLayout cell=ui.col();cell.setGravity(android.view.Gravity.CENTER);cell.setMinimumHeight(ui.dp(56));cell.setPadding(0,ui.dp(6),0,ui.dp(6));
+            if(tab==n)cell.setBackground(ui.bg(UI.TINT,14));
+            cell.addView(new NavIcon(this,n,tab==n?UI.GREEN:UI.MUTED),new LinearLayout.LayoutParams(ui.dp(22),ui.dp(22)));
+            TextView label=ui.text(labels[n],11,tab==n?UI.GREEN:UI.MUTED);label.setGravity(android.view.Gravity.CENTER);label.setMaxLines(1);cell.addView(label);
+            cell.setContentDescription(labels[n]);cell.setSelected(tab==n);cell.setOnClickListener(v->navigateTo(selected));ui.weight(nav,cell);
         }
-        LinearLayout nav = this.ui.row();
-        nav.setPadding(this.ui.dp(8.0f), this.ui.dp(6.0f), this.ui.dp(8.0f), this.ui.dp(6.0f));
-        nav.setBackgroundColor(UI.CARD);
-        this.root.addView(nav);
-        String[] labels = {"Today", "Projects", "Goals", "Journal", "Gym"};
-        int n = 0;
-        while (n < labels.length) {
-            final int selected = n;
-            LinearLayout cell = this.ui.col();
-            cell.setGravity(17);
-            LinearLayout top2 = top;
-            NavIcon gear2 = gear;
-            int i2 = i;
-            cell.setPadding(i2, this.ui.dp(6.0f), i2, this.ui.dp(6.0f));
-            cell.setMinimumHeight(this.ui.dp(56.0f));
-            if (this.tab == n) {
-                cell.setBackground(this.ui.bg(-14338014, 12));
-            }
-            TextView brand2 = brand;
-            TextView dot2 = dot;
-            cell.addView(new NavIcon(this, n, this.tab == n ? UI.GREEN : -5654611), new LinearLayout.LayoutParams(this.ui.dp(24.0f), this.ui.dp(24.0f)));
-            TextView label = this.ui.text(labels[n], 12, this.tab == n ? UI.GREEN : -5654611);
-            label.setGravity(17);
-            cell.addView(label);
-            cell.setContentDescription(labels[n]);
-            cell.setOnClickListener(new View.OnClickListener() {
-                @Override // android.view.View.OnClickListener
-                public final void onClick(View view) {
-                    MainActivity.this.lambda$render$1(selected, view);
-                }
-            });
-            this.ui.weight(nav, cell);
-            n++;
-            top = top2;
-            gear = gear2;
-            dot = dot2;
-            brand = brand2;
-            i = 0;
+        contentScroll.post(()->contentScroll.scrollTo(0,previousScroll));
+        if(animateNext && android.animation.ValueAnimator.areAnimatorsEnabled()){
+            body.setAlpha(0);body.setTranslationY(ui.dp(8));body.animate().alpha(1).translationY(0).setDuration(180).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
         }
+        animateNext=false;
     }
 
-    public /* synthetic */ void lambda$render$0(View v) {
-        this.tab = 5;
-        render();
+    private void navigateTo(int selected){animateNext=tab!=selected;tab=selected;projectId=0;render();}
+    private void creationActions(LinearLayout row){
+        ui.weight(row,ui.button("+ Add task",true,()->edit(newTask(0L),false)));
+        ui.weight(row,ui.button("Paste list",false,this::bulk));
     }
 
-    public /* synthetic */ void lambda$render$1(int selected, View v) {
-        this.tab = selected;
-        this.projectId = 0L;
-        render();
+    public /* synthetic */ void renderAction0(View v) {
+        navigateTo(5);
+    }
+
+    public /* synthetic */ void renderAction1(int selected, View v) {
+        navigateTo(selected);
     }
 
     private boolean onDay(Item i, LocalDate d) {
@@ -308,7 +254,7 @@ public class MainActivity extends Activity {
     private void priorityBadge(LinearLayout card, boolean signal) {
         if (signal) {
             android.graphics.drawable.GradientDrawable background = ui.bg(UI.CARD, 18);
-            background.setStroke(ui.dp(1), 0x99E8BE65);
+            background.setStroke(ui.dp(1), UI.GOLD);
             card.setBackground(background);
         }
         TextView badge = ui.bold(signal ? "◆ SIGNAL" : "NOISE", 11, signal ? UI.GOLD : UI.MUTED);
@@ -323,7 +269,7 @@ public class MainActivity extends Activity {
         String[] labels={"All","Signal","Noise"};
         for(int n=0;n<labels.length;n++) {
             final int choice=n;
-            Button button=ui.chip(labels[n],priorityFilter==n,()->{priorityFilter=choice;render();});
+            Button button=ui.chip(labels[n],priorityFilter==n,()->{priorityFilter=choice;animateNext=true;render();});
             button.setContentDescription("Filter: "+labels[n]);
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,ui.dp(48));lp.rightMargin=ui.dp(6);filters.addView(button,lp);
         }
@@ -338,6 +284,7 @@ public class MainActivity extends Activity {
     }
 
     private void today() {
+        if(BuildConfig.REDESIGN){todayStudio();return;}
         heading("MAKE ROOM FOR WHAT MATTERS", "Your day, in focus.", "");
         priorityControls();
         List<Item> items = new ArrayList<>();
@@ -375,7 +322,7 @@ public class MainActivity extends Activity {
                 MainActivity.this.todayAction3();
             }
         }), new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
-        this.ui.weight(dateRow, this.ui.link(this.day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), new Runnable() {
+        this.ui.weight(dateRow, this.ui.link(this.day.format(DateTimeFormatter.ofPattern("EEE, d MMM")), new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
                 MainActivity.this.todayAction5();
@@ -387,9 +334,9 @@ public class MainActivity extends Activity {
                 MainActivity.this.todayAction6();
             }
         }), new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
-        this.ui.space(this.body, 18);
+        this.ui.space(this.body, 8);
         if (items.isEmpty()) {
-            LinearLayout c = this.ui.empty(this.body, 0, priorityFilter==0 ? "A clear day. A fresh start." : "No matching tasks today.", priorityFilter==0 ? "Add your first task, or bring a subtask over from Projects." : "Try All, or change a task’s Signal / Noise setting.", true);
+            LinearLayout c = this.ui.empty(this.body, 0, priorityFilter==0 ? "A little space to begin." : "No matching tasks today.", priorityFilter==0 ? "Add a task or paste your routine below." : "Try All, or change a task’s Signal / Noise setting.", true);
         }
         orderTasks(items);
         for (Item i2 : items) {
@@ -425,9 +372,7 @@ public class MainActivity extends Activity {
                 itemCard(this.body, i6, i6.key(LocalDate.now()), false);
             }
         }
-        LinearLayout creation = ui.row();body.addView(creation);
-        ui.weight(creation, ui.button("+ Add task", true, ()->edit(newTask(0L),false)));
-        ui.weight(creation, ui.button("Paste list", false, this::bulk));
+        ui.space(body,8);LinearLayout creation=ui.row();body.addView(creation);creationActions(creation);
         this.ui.space(this.body, 22);
         this.body.addView(this.ui.text("↗ " + best + " day best current streak. Finish a daily task to keep its streak going.", 13, UI.MUTED));
         if (!Alarms.exact(this) || !Alarms.notifications(this) || !Alarms.fullScreen(this)) {
@@ -438,6 +383,56 @@ public class MainActivity extends Activity {
                 }
             }));
         }
+    }
+
+    private void todayStudio(){
+        ui.eyebrow(body,"A LITTLE PROGRESS, EVERY DAY");
+        TextView title=ui.bold(day.equals(LocalDate.now())?"Make today count.":"Make room for it.",32,UI.TEXT);
+        title.setTypeface(android.graphics.Typeface.create("serif",android.graphics.Typeface.NORMAL));body.addView(title);ui.space(body,8);
+        body.addView(ui.text("Less noise. More of what matters.",15,UI.MUTED));ui.space(body,20);
+        List<Item> scheduled=new ArrayList<>(),earlier=new ArrayList<>(),parked=new ArrayList<>();int completed=0,signals=0;
+        for(Item item:store.items()){
+            if(!matchesPriority(item))continue;
+            if(onDay(item,day)){scheduled.add(item);if(done(item,item.key(day)))completed++;if(store.isSignal(item))signals++;}
+            else if(!item.goal && item.enabled && item.scheduled && item.repeat==0 && LocalDate.parse(item.start).isBefore(day) && !done(item,item.key(day)) && !"skipped".equals(store.status(item.id,item.key(day))))earlier.add(item);
+            else if(!item.goal && item.project==0 && (!item.scheduled||!item.enabled))parked.add(item);
+        }
+        LinearLayout progress=ui.card(body);progress.setBackground(ui.bg(UI.TINT,20));
+        LinearLayout stats=ui.row();progress.addView(stats);ui.weight(stats,ui.bold(completed+" of "+scheduled.size()+" complete",18,UI.TEXT));
+        stats.addView(ui.text(signals+" signal",13,UI.GREEN));ui.space(progress,12);
+        ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);bar.setMax(Math.max(1,scheduled.size()));bar.setProgress(completed);bar.setProgressTintList(ColorStateList.valueOf(UI.GREEN));bar.setProgressBackgroundTintList(ColorStateList.valueOf(UI.LINE));progress.addView(bar,new LinearLayout.LayoutParams(-1,ui.dp(6)));
+        ui.space(body,8);priorityControls();
+        LinearLayout dateRow=ui.row();body.addView(dateRow);
+        dateRow.addView(ui.link("‹",()->{day=day.minusDays(1);render();}),new LinearLayout.LayoutParams(ui.dp(48),ui.dp(48)));
+        ui.weight(dateRow,ui.link(day.format(DateTimeFormatter.ofPattern("EEEE, d MMM")),this::todayAction5));
+        dateRow.addView(ui.link("›",()->{day=day.plusDays(1);render();}),new LinearLayout.LayoutParams(ui.dp(48),ui.dp(48)));
+        ui.space(body,12);
+        if(scheduled.isEmpty())ui.empty(body,0,priorityFilter==0?"Your day starts here.":"Nothing in this view.",priorityFilter==0?"Choose one thing worth making time for. Add it below.":"Switch to All or change a task’s priority.",true);
+        studioSection("THE PLAN",scheduled,day);
+        studioSection("STILL ON YOUR MIND",earlier,day);
+        studioSection("ON PAUSE",parked,LocalDate.now());
+        if(!Alarms.exact(this)||!Alarms.notifications(this)||!Alarms.fullScreen(this)){ui.space(body,12);ui.action(body,"Set up reminders →",false,()->navigateTo(5));}
+    }
+
+    private void studioSection(String label,List<Item> items,LocalDate date){
+        if(items.isEmpty())return;orderTasks(items);ui.eyebrow(body,label);
+        for(Item item:items)itemCard(body,item,item.key(date),true);ui.space(body,8);
+    }
+
+    private void studioTaskCard(LinearLayout parent,Item item,String key){
+        boolean finished=done(item,key),signal=store.isSignal(item);LinearLayout card=ui.card(parent);
+        LinearLayout row=ui.row();card.addView(row);
+        Button check=ui.chip(finished?"✓":"○",finished,()->{if(finished)details(item,key);else if(item.goal&&!"started".equals(store.status(item.id,key)))startGoal(item,key);else complete(item,key);});
+        check.setContentDescription(finished?"Completed "+item.title:(item.goal&&!"started".equals(store.status(item.id,key))?"Start ":"Complete ")+item.title);row.addView(check,new LinearLayout.LayoutParams(ui.dp(48),ui.dp(48)));
+        LinearLayout copy=ui.col();copy.setPadding(ui.dp(10),0,0,0);ui.weight(row,copy);
+        TextView name=ui.bold(item.title,18,finished?UI.MUTED:UI.TEXT);if(finished)name.setPaintFlags(name.getPaintFlags()|16);copy.addView(name);
+        copy.addView(ui.text(item.scheduled?time(item.minute)+" · "+Rules.repeatLabel(item.repeat):"Unscheduled",13,UI.MUTED));
+        copy.setOnClickListener(v->details(item,key));copy.setContentDescription("Open "+item.title);
+        ui.space(card,10);LinearLayout meta=ui.row();card.addView(meta);TextView badge=ui.bold(signal?"◆ SIGNAL":"NOISE",11,signal?UI.GOLD:UI.MUTED);meta.addView(badge);
+        if(item.project>0){TextView project=ui.text("  /  "+store.projectName(item.project),12,UI.MUTED);project.setMaxLines(1);project.setEllipsize(android.text.TextUtils.TruncateAt.END);ui.weight(meta,project);}
+        if(!"planned".equals(store.status(item.id,key))&&!finished)card.addView(ui.text(store.status(item.id,key),12,UI.GREEN));
+        if(!item.notes.isEmpty()){ui.space(card,8);TextView note=ui.text(item.notes,14,UI.MUTED);note.setMaxLines(2);note.setEllipsize(android.text.TextUtils.TruncateAt.END);card.addView(note);}
+        card.setOnClickListener(v->details(item,key));
     }
 
     public /* synthetic */ void todayAction2() {
@@ -498,6 +493,7 @@ public class MainActivity extends Activity {
     }
 
     private void itemCard(LinearLayout parent, final Item i, final String key, boolean showTime) {
+        if(BuildConfig.REDESIGN){studioTaskCard(parent,i,key);return;}
         StringBuilder sbAppend;
         List<String> photos;
         LinearLayout linearLayoutCard = this.ui.card(parent);

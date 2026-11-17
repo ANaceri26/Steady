@@ -27,24 +27,26 @@ public final class JournalScreen {
         this.activity=a;this.ui=ui;this.store=store;this.repo=new JournalRepository(store);this.refresh=refresh;this.export=export;this.photo=photo;
     }
     public void render(LinearLayout body) {
-        ui.eyebrow(body,"YOUR PERSONAL KNOWLEDGE LIBRARY");
-        body.addView(ui.bold("Keep what you learn.",30,UI.TEXT));
-        body.addView(ui.text("Capture advice, reflect on your day, and collect evidence for your next portfolio project.",15,UI.MUTED));
-        ui.space(body,16);
+        ui.eyebrow(body,BuildConfig.REDESIGN?"THE NOTEBOOK":"YOUR KNOWLEDGE LIBRARY");
+        TextView heading=ui.bold(BuildConfig.REDESIGN?"Collect the useful.":"Keep what you learn.",BuildConfig.REDESIGN?32:28,UI.TEXT);
+        if(BuildConfig.REDESIGN)heading.setTypeface(android.graphics.Typeface.create("serif",android.graphics.Typeface.NORMAL));
+        body.addView(heading);ui.space(body,6);
+        body.addView(ui.text(BuildConfig.REDESIGN?"Ideas to keep. Lessons to build on.":"Save advice, lessons, and project progress.",15,UI.MUTED));
+        ui.space(body,20);
         LinearLayout actions=ui.row();body.addView(actions);
         ui.weight(actions,ui.button("+ Write",true,()->edit(new JournalRepository.Entry())));
         ui.weight(actions,ui.button("Export all",false,export));
-        ui.space(body,12);
+        EditText query=ui.search(body,search);
+        if(BuildConfig.REDESIGN){ui.space(body,4);ui.eyebrow(body,"COLLECTIONS");}
         HorizontalScrollView scroller=new HorizontalScrollView(activity);scroller.setHorizontalScrollBarEnabled(false);
         LinearLayout bubbles=ui.row();scroller.addView(bubbles);body.addView(scroller);
         bubble(bubbles,"All",-1);bubble(bubbles,"Ungrouped",0);
         for(JournalRepository.Group g:repo.groups())bubble(bubbles,g.name,g.id);
-        bubbles.addView(ui.button("+ Group",false,()->groupEditor(0,"")));
+        bubbles.addView(ui.chip("+ Group",false,()->groupEditor(0,"")),new LinearLayout.LayoutParams(-2,ui.dp(48)));
         if(selectedGroup>0) {
             for(JournalRepository.Group g:repo.groups())if(g.id==selectedGroup)ui.action(body,"Manage “"+g.name+"”",false,()->groupEditor(g.id,g.name));
         }
-        EditText query=ui.input(body,"Search titles, notes, lessons, or projects",search,false);
-        query.setContentDescription("Search journal entries");
+
         LinearLayout list=ui.col();body.addView(list);ui.space(body,8);
         renderEntries(list);
         query.addTextChangedListener(new TextWatcher(){
@@ -54,15 +56,15 @@ public final class JournalScreen {
         });
     }
     private void bubble(LinearLayout row,String name,long id) {
-        Button b=ui.button(name,selectedGroup==id,()->{selectedGroup=id;visibleCount=30;refresh.run();});
+        Button b=ui.chip(name,selectedGroup==id,()->{selectedGroup=id;visibleCount=30;refresh.run();});
         b.setSelected(selectedGroup==id);b.setContentDescription(name+(selectedGroup==id?", selected":""));
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.rightMargin=ui.dp(8);row.addView(b,lp);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,ui.dp(48));lp.rightMargin=ui.dp(8);row.addView(b,lp);
     }
     private void renderEntries(LinearLayout list) {
         list.removeAllViews();ui.space(list,16);
         List<JournalRepository.Entry> entries=repo.entries(selectedGroup,search);
-        list.addView(ui.text(entries.size()+" entries",12,UI.MUTED));ui.space(list,12);
-        if(entries.isEmpty())ui.empty(list,3,"Room for your next idea",search.isEmpty()?"Write a journal, save advice, or document a project. Existing entries are in All and Ungrouped.":"No matches. Try another search or group.",false);
+        LinearLayout count=ui.row();list.addView(count);ui.weight(count,ui.bold(BuildConfig.REDESIGN?"Your notes":"Entries",18,UI.TEXT));count.addView(ui.text(String.valueOf(entries.size()),13,UI.MUTED));ui.space(list,12);
+        if(entries.isEmpty())ui.empty(list,3,"Room for your next idea",search.isEmpty()?"Capture one idea, a useful lesson, or your next project step.":"No matches. Try another search or group.",false);
         for(JournalRepository.Entry e:entries.subList(0,Math.min(visibleCount,entries.size()))) {
             LinearLayout card=ui.card(list);
             card.addView(ui.text(e.kind+" · "+e.date,12,UI.GREEN));
