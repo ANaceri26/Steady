@@ -181,12 +181,12 @@ public class MainActivity extends Activity {
 
     private void heading(String eyebrow, String title, String desc) {
         this.ui.eyebrow(this.body, eyebrow);
-        this.body.addView(this.ui.bold(title, 32, UI.TEXT));
+        this.body.addView(this.ui.bold(title, 28, UI.TEXT));
         if (!desc.isEmpty()) {
             this.ui.space(this.body, 6);
             this.body.addView(this.ui.text(desc, 15, UI.MUTED));
         }
-        this.ui.space(this.body, 24);
+        this.ui.space(this.body, 16);
     }
 
     public void render() {
@@ -208,7 +208,7 @@ public class MainActivity extends Activity {
         FrameLayout setting = new FrameLayout(this);
         setting.setContentDescription("Setup and settings");
         setting.setBackground(this.ui.bg(UI.BG, 12));
-        NavIcon gear = new NavIcon(this, 5, this.tab == 5 ? UI.GREEN : -5654611);
+        NavIcon gear = new NavIcon(this, 5, this.tab == 5 ? UI.GREEN : UI.MUTED);
         FrameLayout.LayoutParams gearSize = new FrameLayout.LayoutParams(this.ui.dp(24.0f), this.ui.dp(24.0f), 17);
         setting.addView(gear, gearSize);
         top.addView(setting, new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
@@ -226,7 +226,7 @@ public class MainActivity extends Activity {
         this.root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1.0f));
         this.body = this.ui.col();
         int i = 0;
-        this.body.setPadding(this.ui.dp(18.0f), this.ui.dp(28.0f), this.ui.dp(18.0f), this.ui.dp(28.0f));
+        this.body.setPadding(this.ui.dp(18.0f), this.ui.dp(20.0f), this.ui.dp(18.0f), this.ui.dp(24.0f));
         scroll.addView(this.body);
         if (this.tab == 0) {
             today();
@@ -242,7 +242,7 @@ public class MainActivity extends Activity {
             setup();
         }
         LinearLayout nav = this.ui.row();
-        nav.setPadding(this.ui.dp(8.0f), this.ui.dp(10.0f), this.ui.dp(8.0f), this.ui.dp(12.0f));
+        nav.setPadding(this.ui.dp(8.0f), this.ui.dp(6.0f), this.ui.dp(8.0f), this.ui.dp(6.0f));
         nav.setBackgroundColor(UI.CARD);
         this.root.addView(nav);
         String[] labels = {"Today", "Projects", "Goals", "Journal", "Gym"};
@@ -308,7 +308,7 @@ public class MainActivity extends Activity {
     private void priorityBadge(LinearLayout card, boolean signal) {
         if (signal) {
             android.graphics.drawable.GradientDrawable background = ui.bg(UI.CARD, 18);
-            background.setStroke(ui.dp(2), UI.GOLD);
+            background.setStroke(ui.dp(1), 0x99E8BE65);
             card.setBackground(background);
         }
         TextView badge = ui.bold(signal ? "◆ SIGNAL" : "NOISE", 11, signal ? UI.GOLD : UI.MUTED);
@@ -317,14 +317,19 @@ public class MainActivity extends Activity {
     }
 
     private void priorityControls() {
-        LinearLayout filters = ui.row();body.addView(filters);
+        android.widget.HorizontalScrollView scroll=new android.widget.HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout filters=ui.row();scroll.addView(filters);body.addView(scroll);
         String[] labels={"All","Signal","Noise"};
         for(int n=0;n<labels.length;n++) {
             final int choice=n;
-            Button button=ui.button(labels[n], priorityFilter==n, ()->{priorityFilter=choice;render();});
-            button.setSelected(priorityFilter==n);button.setContentDescription("Filter: "+labels[n]);ui.weight(filters,button);
+            Button button=ui.chip(labels[n],priorityFilter==n,()->{priorityFilter=choice;render();});
+            button.setContentDescription("Filter: "+labels[n]);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,ui.dp(48));lp.rightMargin=ui.dp(6);filters.addView(button,lp);
         }
-        ui.action(body, signalFirst ? "Order: Signal first" : "Order: Time", false, ()->{signalFirst=!signalFirst;render();});
+        Button order=ui.chip(signalFirst ? "Signal first ↓" : "Time ↓",false,()->{signalFirst=!signalFirst;render();});
+        order.setContentDescription(signalFirst ? "Sort: Signal first. Tap for time order." : "Sort: Time. Tap for Signal first.");
+        filters.addView(order,new LinearLayout.LayoutParams(-2,ui.dp(48)));
         ui.space(body,12);
     }
 
@@ -335,13 +340,6 @@ public class MainActivity extends Activity {
     private void today() {
         heading("MAKE ROOM FOR WHAT MATTERS", "Your day, in focus.", "");
         priorityControls();
-        this.ui.primary(this.body, "+  Add task", new Runnable() {
-            @Override // java.lang.Runnable
-            public final void run() {
-                MainActivity.this.lambda$today$2();
-            }
-        });
-        this.ui.space(this.body, 24);
         List<Item> items = new ArrayList<>();
         int completed = 0;
         int best = 0;
@@ -357,61 +355,41 @@ public class MainActivity extends Activity {
             }
         }
         LinearLayout summary = this.ui.card(this.body);
-        summary.setBackground(this.ui.bg(-14404318, 20));
+        summary.setPadding(ui.dp(16),ui.dp(14),ui.dp(16),ui.dp(14));
         LinearLayout counts = this.ui.row();
         summary.addView(counts);
         LinearLayout score = this.ui.col();
         score.addView(this.ui.bold(priorityFilter==0 ? "DAILY PROGRESS" : priorityFilter==1 ? "SIGNAL PROGRESS" : "NOISE PROGRESS", 11, UI.MUTED));
-        score.addView(this.ui.bold(completed + " / " + items.size(), 42, UI.TEXT));
-        score.addView(this.ui.text((completed != items.size() || completed <= 0) ? "One task at a time." : "Everything you planned, done.", 14, UI.MUTED));
+        score.addView(this.ui.bold(completed + " / " + items.size(), 28, UI.TEXT));
+        score.addView(this.ui.text((completed != items.size() || completed <= 0) ? "One task at a time." : "Everything you planned, done.", 12, UI.MUTED));
         this.ui.weight(counts, score);
-        counts.addView(new ProgressRing(this, completed, items.size()), new LinearLayout.LayoutParams(this.ui.dp(102.0f), this.ui.dp(102.0f)));
-        this.ui.space(this.body, 20);
-        this.body.addView(this.ui.bold("Your schedule", 23, UI.TEXT));
-        this.ui.space(this.body, 16);
+        counts.addView(new ProgressRing(this, completed, items.size()), new LinearLayout.LayoutParams(this.ui.dp(64.0f), this.ui.dp(64.0f)));
+        this.ui.space(this.body, 8);
+        this.body.addView(this.ui.bold("Your schedule", 21, UI.TEXT));
+        this.ui.space(this.body, 4);
         LinearLayout dateRow = this.ui.row();
         this.body.addView(dateRow);
         dateRow.addView(this.ui.link("‹", new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
-                MainActivity.this.lambda$today$3();
+                MainActivity.this.todayAction3();
             }
         }), new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
         this.ui.weight(dateRow, this.ui.link(this.day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
-                MainActivity.this.lambda$today$5();
+                MainActivity.this.todayAction5();
             }
         }));
         dateRow.addView(this.ui.link("›", new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
-                MainActivity.this.lambda$today$6();
+                MainActivity.this.todayAction6();
             }
         }), new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
         this.ui.space(this.body, 18);
         if (items.isEmpty()) {
             LinearLayout c = this.ui.empty(this.body, 0, priorityFilter==0 ? "A clear day. A fresh start." : "No matching tasks today.", priorityFilter==0 ? "Add your first task, or bring a subtask over from Projects." : "Try All, or change a task’s Signal / Noise setting.", true);
-            this.ui.primary(c, "+  Plan a task", new Runnable() {
-                @Override // java.lang.Runnable
-                public final void run() {
-                    MainActivity.this.lambda$today$7();
-                }
-            });
-            this.ui.space(c, 14);
-            c.addView(this.ui.link("Paste your daily task list", new Runnable() {
-                @Override // java.lang.Runnable
-                public final void run() {
-                    MainActivity.this.bulk();
-                }
-            }));
-        } else {
-            this.body.addView(this.ui.link("Paste a task list", new Runnable() {
-                @Override // java.lang.Runnable
-                public final void run() {
-                    MainActivity.this.bulk();
-                }
-            }));
         }
         orderTasks(items);
         for (Item i2 : items) {
@@ -447,51 +425,54 @@ public class MainActivity extends Activity {
                 itemCard(this.body, i6, i6.key(LocalDate.now()), false);
             }
         }
+        LinearLayout creation = ui.row();body.addView(creation);
+        ui.weight(creation, ui.button("+ Add task", true, ()->edit(newTask(0L),false)));
+        ui.weight(creation, ui.button("Paste list", false, this::bulk));
         this.ui.space(this.body, 22);
         this.body.addView(this.ui.text("↗ " + best + " day best current streak. Finish a daily task to keep its streak going.", 13, UI.MUTED));
         if (!Alarms.exact(this) || !Alarms.notifications(this) || !Alarms.fullScreen(this)) {
             this.body.addView(this.ui.link("Finish alarm setup →", new Runnable() {
                 @Override // java.lang.Runnable
                 public final void run() {
-                    MainActivity.this.lambda$today$8();
+                    MainActivity.this.todayAction8();
                 }
             }));
         }
     }
 
-    public /* synthetic */ void lambda$today$2() {
+    public /* synthetic */ void todayAction2() {
         edit(newTask(0L), false);
     }
 
-    public /* synthetic */ void lambda$today$3() {
+    public /* synthetic */ void todayAction3() {
         this.day = this.day.minusDays(1L);
         render();
     }
 
-    public /* synthetic */ void lambda$today$4(LocalDate d) {
+    public /* synthetic */ void todayAction4(LocalDate d) {
         this.day = d;
         render();
     }
 
-    public /* synthetic */ void lambda$today$5() {
+    public /* synthetic */ void todayAction5() {
         pickDate(this.day, new DateResult() {
             @Override // com.steady.scheduler.MainActivity.DateResult
             public final void result(LocalDate localDate) {
-                MainActivity.this.lambda$today$4(localDate);
+                MainActivity.this.todayAction4(localDate);
             }
         });
     }
 
-    public /* synthetic */ void lambda$today$6() {
+    public /* synthetic */ void todayAction6() {
         this.day = this.day.plusDays(1L);
         render();
     }
 
-    public /* synthetic */ void lambda$today$7() {
+    public /* synthetic */ void todayAction7() {
         edit(newTask(0L), false);
     }
 
-    public /* synthetic */ void lambda$today$8() {
+    public /* synthetic */ void todayAction8() {
         this.tab = 5;
         render();
     }
@@ -537,7 +518,7 @@ public class MainActivity extends Activity {
         });
         LinearLayout copy = this.ui.col();
         this.ui.weight(row, copy);
-        TextView title = this.ui.bold(i.title, 17, finished ? UI.MUTED : -920078);
+        TextView title = this.ui.bold(i.title, 17, finished ? UI.MUTED : UI.TEXT);
         if (finished) {
             title.setPaintFlags(title.getPaintFlags() | 16);
         }

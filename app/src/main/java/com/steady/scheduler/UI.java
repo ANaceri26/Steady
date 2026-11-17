@@ -14,13 +14,13 @@ import android.widget.TextView;
 
 public final class UI {
     public static final int GOLD = 0xFFE8BE65;
-    public static final int BG = -15722733;
-    public static final int CARD = -15129827;
-    public static final int GREEN = -4919436;
-    public static final int LINE = -13418184;
-    public static final int MUTED = -5654611;
-    public static final int RED = -21853;
-    public static final int TEXT = -920078;
+    public static final int BG = 0xFF14191F;
+    public static final int CARD = 0xFF1D252D;
+    public static final int GREEN = 0xFF8FD3C5;
+    public static final int LINE = 0xFF35414B;
+    public static final int MUTED = 0xFFA9B5BE;
+    public static final int RED = 0xFFFFA7A1;
+    public static final int TEXT = 0xFFF2F1EB;
     public final Activity a;
 
     public UI(Activity a) {
@@ -74,7 +74,7 @@ public final class UI {
         LinearLayout v = col();
         v.setPadding(dp(18.0f), dp(18.0f), dp(18.0f), dp(18.0f));
         GradientDrawable border = bg(CARD, 18);
-        border.setStroke(dp(1.0f), LINE);
+        border.setStroke(dp(1.0f), 0x24FFFFFF);
         v.setBackground(border);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = dp(12.0f);
@@ -89,7 +89,11 @@ public final class UI {
         b.setTextSize(15.0f);
         b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         b.setTextColor(primary ? BG : TEXT);
-        b.setBackground(bg(primary ? GREEN : LINE, 14));
+        GradientDrawable surface=bg(primary ? GREEN : CARD, 12);
+        if(!primary)surface.setStroke(dp(1),0x30FFFFFF);
+        b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x26FFFFFF),surface,null));
+        b.setBackgroundTintList(null);b.setStateListAnimator(null);
+        b.setMinWidth(0);b.setMinimumWidth(0);
         b.setPadding(dp(14.0f), dp(8.0f), dp(14.0f), dp(8.0f));
         b.setMinHeight(dp(48.0f));
         b.setMinimumHeight(dp(48.0f));
@@ -100,6 +104,17 @@ public final class UI {
             }
         });
         return b;
+    }
+
+    public Button chip(String label, boolean selected, Runnable action) {
+        Button button=button(label,false,action);
+        button.setTextSize(13);button.setTextColor(selected ? TEXT : MUTED);
+        button.setPadding(dp(12),0,dp(12),0);
+        GradientDrawable surface=bg(selected ? 0xFF32434A : CARD,18);
+        surface.setStroke(dp(1),selected ? 0x668FD3C5 : 0x20FFFFFF);
+        android.graphics.drawable.InsetDrawable inset=new android.graphics.drawable.InsetDrawable(surface,0,dp(6),0,dp(6));
+        button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x268FD3C5),inset,null));
+        button.setSelected(selected);return button;
     }
 
     public void action(LinearLayout p, String s, boolean primary, Runnable r) {

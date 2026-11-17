@@ -26,6 +26,21 @@ public class FlowTest {
     @After public void close(){controller.pause().stop().destroy();store.close();}
     private void collect(View v,List<EditText> out){if(v instanceof EditText)out.add((EditText)v);if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++)collect(g.getChildAt(i),out);}}
     private List<EditText> fields(AlertDialog dialog){List<EditText> out=new ArrayList<>();collect(dialog.getWindow().getDecorView(),out);return out;}
+    private List<Button> buttons(View view,String label){
+        List<Button> result=new ArrayList<>();
+        if(view instanceof Button && label.contentEquals(((Button)view).getText()))result.add((Button)view);
+        if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int n=0;n<group.getChildCount();n++)result.addAll(buttons(group.getChildAt(n),label));}
+        return result;
+    }
+    @Test public void creationActionsRemainAvailableOnceForEmptyAndPopulatedDays(){
+        for(int n=0;n<2;n++){
+            a.render();View root=a.findViewById(android.R.id.content);
+            assertEquals(1,buttons(root,"+ Add task").size());assertEquals(1,buttons(root,"Paste list").size());
+            buttons(root,"+ Add task").get(0).performClick();AlertDialog add=ShadowAlertDialog.getLatestAlertDialog();assertTrue(add.isShowing());add.dismiss();
+            buttons(root,"Paste list").get(0).performClick();AlertDialog paste=ShadowAlertDialog.getLatestAlertDialog();assertTrue(paste.isShowing());paste.dismiss();
+            Item item=new Item();item.title="Visible task";item.repeat=1;store.save(item);
+        }
+    }
     private Switch findSwitch(View view,String label){
         if(view instanceof Switch && label.contentEquals(((Switch)view).getText()))return (Switch)view;
         if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int n=0;n<group.getChildCount();n++){Switch found=findSwitch(group.getChildAt(n),label);if(found!=null)return found;}}
