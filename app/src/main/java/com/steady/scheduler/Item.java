@@ -5,6 +5,8 @@ import java.time.LocalDate;
 public class Item {
     public long id;
     public long project;
+    // Null follows the project default; every task resolves to Signal or Noise.
+    public Boolean signalOverride;
     public String title = "";
     public String notes = "";
     public String section = "";

@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public final class UI {
+    public static final int GOLD = 0xFFE8BE65;
     public static final int BG = -15722733;
     public static final int CARD = -15129827;
     public static final int GREEN = -4919436;

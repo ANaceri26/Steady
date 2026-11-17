@@ -16,6 +16,7 @@ public final class Store extends SQLiteOpenHelper {
     public static class Project {
         public long id;
         public String notes;
+        public boolean signal;
         public String title;
     }
 
@@ -27,7 +28,7 @@ public final class Store extends SQLiteOpenHelper {
     }
 
     private Store(Context c) {
-        super(c, "steady.db", (SQLiteDatabase.CursorFactory) null, 4);
+        super(c, "steady.db", (SQLiteDatabase.CursorFactory) null, 5);
     }
 
     @Override // android.database.sqlite.SQLiteOpenHelper
@@ -45,6 +46,7 @@ public final class Store extends SQLiteOpenHelper {
         journalPhotosTable(db);
         GymStore.create(db);
         JournalRepository.migrate(db);
+        migratePriority(db);
         db.execSQL("CREATE TABLE snoozes(item INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,period TEXT NOT NULL,at INTEGER NOT NULL,PRIMARY KEY(item,period))");
     }
 
@@ -52,8 +54,14 @@ public final class Store extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE IF NOT EXISTS journal_photos(id INTEGER PRIMARY KEY AUTOINCREMENT,journal INTEGER NOT NULL REFERENCES journal(id) ON DELETE CASCADE,path TEXT NOT NULL)");
     }
 
+    static void migratePriority(SQLiteDatabase db) {
+        db.execSQL("ALTER TABLE projects ADD COLUMN signal INTEGER NOT NULL DEFAULT 0 CHECK(signal IN (0,1))");
+        db.execSQL("ALTER TABLE items ADD COLUMN signal_override INTEGER CHECK(signal_override IN (0,1))");
+    }
+
     @Override // android.database.sqlite.SQLiteOpenHelper
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion < 5 && newVersion >= 5) migratePriority(db);
         if (oldVersion < 4) {
             JournalRepository.migrate(db);
         }
@@ -118,6 +126,8 @@ public final class Store extends SQLiteOpenHelper {
 
     public long save(Item item) {
         ContentValues contentValues = new ContentValues();
+        if (item.signalOverride == null) contentValues.putNull("signal_override");
+        else contentValues.put("signal_override", item.signalOverride ? 1 : 0);
         contentValues.put("title", item.title);
         contentValues.put("notes", item.notes);
         contentValues.put("section", item.section);
@@ -153,6 +163,8 @@ public final class Store extends SQLiteOpenHelper {
         i.repeat = c.getInt(8);
         i.minute = c.getInt(9);
         i.start = c.getString(10);
+        int priority = c.getColumnIndexOrThrow("signal_override");
+        i.signalOverride = c.isNull(priority) ? null : c.getInt(priority) == 1;
         return i;
     }
 
@@ -286,6 +298,7 @@ public final class Store extends SQLiteOpenHelper {
                 p.id = c.getLong(0);
                 p.title = c.getString(1);
                 p.notes = c.getString(2);
+                p.signal = c.getInt(c.getColumnIndexOrThrow("signal")) == 1;
                 out.add(p);
             } catch (Throwable th) {
                 if (c != null) {
@@ -304,10 +317,25 @@ public final class Store extends SQLiteOpenHelper {
         return out;
     }
 
+    public boolean projectSignal(long id) {
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT signal FROM projects WHERE id=?", new String[]{String.valueOf(id)})) {
+            return c.moveToFirst() && c.getInt(0) == 1;
+        }
+    }
+
+    public boolean isSignal(Item item) {
+        return item.signalOverride != null ? item.signalOverride : projectSignal(item.project);
+    }
+
     public long project(long id, String title, String notes) {
+        return project(id, title, notes, projectSignal(id));
+    }
+
+    public long project(long id, String title, String notes, boolean signal) {
         ContentValues v = new ContentValues();
         v.put("title", title);
         v.put("notes", notes);
+        v.put("signal", signal ? 1 : 0);
         if (id == 0) {
             return getWritableDatabase().insertOrThrow("projects", null, v);
         }

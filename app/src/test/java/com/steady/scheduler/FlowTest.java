@@ -26,6 +26,20 @@ public class FlowTest {
     @After public void close(){controller.pause().stop().destroy();store.close();}
     private void collect(View v,List<EditText> out){if(v instanceof EditText)out.add((EditText)v);if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++)collect(g.getChildAt(i),out);}}
     private List<EditText> fields(AlertDialog dialog){List<EditText> out=new ArrayList<>();collect(dialog.getWindow().getDecorView(),out);return out;}
+    private Switch findSwitch(View view,String label){
+        if(view instanceof Switch && label.contentEquals(((Switch)view).getText()))return (Switch)view;
+        if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int n=0;n<group.getChildCount();n++){Switch found=findSwitch(group.getChildAt(n),label);if(found!=null)return found;}}
+        return null;
+    }
+    @Test public void taskPriorityEditorSavesOverridesAndCancelKeepsPreviousValue() throws Exception {
+        long project=store.project(0,"Signal project","",true);Item item=new Item();item.title="Subtask";item.project=project;item.scheduled=false;store.save(item);
+        Method edit=MainActivity.class.getDeclaredMethod("edit",Item.class,boolean.class);edit.setAccessible(true);edit.invoke(a,item,false);
+        AlertDialog dialog=ShadowAlertDialog.getLatestAlertDialog();View root=dialog.getWindow().getDecorView();
+        Switch follow=findSwitch(root,"Follow project priority"),signal=findSwitch(root,"Signal task");assertTrue(follow.isChecked());assertTrue(signal.isChecked());assertFalse(signal.isEnabled());
+        follow.setChecked(false);signal.setChecked(false);dialog.getButton(-1).performClick();assertEquals(Boolean.FALSE,store.find(item.id).signalOverride);
+        edit.invoke(a,store.find(item.id),false);dialog=ShadowAlertDialog.getLatestAlertDialog();findSwitch(dialog.getWindow().getDecorView(),"Follow project priority").setChecked(true);dialog.getButton(-2).performClick();assertEquals(Boolean.FALSE,store.find(item.id).signalOverride);
+        edit.invoke(a,store.find(item.id),false);dialog=ShadowAlertDialog.getLatestAlertDialog();findSwitch(dialog.getWindow().getDecorView(),"Follow project priority").setChecked(true);dialog.getButton(-1).performClick();assertNull(store.find(item.id).signalOverride);assertTrue(store.isSignal(store.find(item.id)));
+    }
     private View findDescription(View v,String description){
         if(description.contentEquals(v.getContentDescription()==null?"":v.getContentDescription()))return v;
         if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++){View found=findDescription(g.getChildAt(i),description);if(found!=null)return found;}}

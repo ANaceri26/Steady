@@ -72,6 +72,8 @@ public class MainActivity extends Activity {
     private Store store;
     private UI ui;
     private int tab = 0;
+    private int priorityFilter = 0; // All, Signal, Noise
+    private boolean signalFirst;
     private LocalDate day = LocalDate.now();
     private long projectId = 0;
     private long photoItem = 0;
@@ -104,6 +106,8 @@ public class MainActivity extends Activity {
         });
         if (state != null) {
             this.tab = state.getInt("tab");
+            priorityFilter = state.getInt("priorityFilter", 0);
+            signalFirst = state.getBoolean("signalFirst", false);
             this.projectId = state.getLong("project");
             this.photoItem = state.getLong("photo");
             this.journalPhotoId = state.getLong("journalPhoto");
@@ -144,6 +148,8 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle b) {
         super.onSaveInstanceState(b);
         b.putInt("tab", this.tab);
+        b.putInt("priorityFilter", priorityFilter);
+        b.putBoolean("signalFirst", signalFirst);
         b.putLong("journalGroup", journalScreen.selectedGroup);
         b.putString("journalSearch", journalScreen.search);
         b.putLong("project", this.projectId);
@@ -295,8 +301,40 @@ public class MainActivity extends Activity {
         return this.store.status(i.id, key).equals("done");
     }
 
+    private boolean matchesPriority(Item item) {
+        return priorityFilter == 0 || store.isSignal(item) == (priorityFilter == 1);
+    }
+
+    private void priorityBadge(LinearLayout card, boolean signal) {
+        if (signal) {
+            android.graphics.drawable.GradientDrawable background = ui.bg(UI.CARD, 18);
+            background.setStroke(ui.dp(2), UI.GOLD);
+            card.setBackground(background);
+        }
+        TextView badge = ui.bold(signal ? "◆ SIGNAL" : "NOISE", 11, signal ? UI.GOLD : UI.MUTED);
+        badge.setContentDescription(signal ? "Signal" : "Noise");
+        card.addView(badge);ui.space(card,6);
+    }
+
+    private void priorityControls() {
+        LinearLayout filters = ui.row();body.addView(filters);
+        String[] labels={"All","Signal","Noise"};
+        for(int n=0;n<labels.length;n++) {
+            final int choice=n;
+            Button button=ui.button(labels[n], priorityFilter==n, ()->{priorityFilter=choice;render();});
+            button.setSelected(priorityFilter==n);button.setContentDescription("Filter: "+labels[n]);ui.weight(filters,button);
+        }
+        ui.action(body, signalFirst ? "Order: Signal first" : "Order: Time", false, ()->{signalFirst=!signalFirst;render();});
+        ui.space(body,12);
+    }
+
+    private void orderTasks(List<Item> tasks) {
+        if(signalFirst) tasks.sort(java.util.Comparator.comparing((Item item)->!store.isSignal(item)));
+    }
+
     private void today() {
         heading("MAKE ROOM FOR WHAT MATTERS", "Your day, in focus.", "");
+        priorityControls();
         this.ui.primary(this.body, "+  Add task", new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
@@ -308,7 +346,7 @@ public class MainActivity extends Activity {
         int completed = 0;
         int best = 0;
         for (Item i : this.store.items()) {
-            if (onDay(i, this.day)) {
+            if (onDay(i, this.day) && matchesPriority(i)) {
                 items.add(i);
                 if (done(i, i.key(this.day))) {
                     completed++;
@@ -323,7 +361,7 @@ public class MainActivity extends Activity {
         LinearLayout counts = this.ui.row();
         summary.addView(counts);
         LinearLayout score = this.ui.col();
-        score.addView(this.ui.bold("DAILY PROGRESS", 11, UI.MUTED));
+        score.addView(this.ui.bold(priorityFilter==0 ? "DAILY PROGRESS" : priorityFilter==1 ? "SIGNAL PROGRESS" : "NOISE PROGRESS", 11, UI.MUTED));
         score.addView(this.ui.bold(completed + " / " + items.size(), 42, UI.TEXT));
         score.addView(this.ui.text((completed != items.size() || completed <= 0) ? "One task at a time." : "Everything you planned, done.", 14, UI.MUTED));
         this.ui.weight(counts, score);
@@ -353,7 +391,7 @@ public class MainActivity extends Activity {
         }), new LinearLayout.LayoutParams(this.ui.dp(48.0f), this.ui.dp(48.0f)));
         this.ui.space(this.body, 18);
         if (items.isEmpty()) {
-            LinearLayout c = this.ui.empty(this.body, 0, "A clear day. A fresh start.", "Add your first task, or bring a subtask over from Projects.", true);
+            LinearLayout c = this.ui.empty(this.body, 0, priorityFilter==0 ? "A clear day. A fresh start." : "No matching tasks today.", priorityFilter==0 ? "Add your first task, or bring a subtask over from Projects." : "Try All, or change a task’s Signal / Noise setting.", true);
             this.ui.primary(c, "+  Plan a task", new Runnable() {
                 @Override // java.lang.Runnable
                 public final void run() {
@@ -375,15 +413,17 @@ public class MainActivity extends Activity {
                 }
             }));
         }
+        orderTasks(items);
         for (Item i2 : items) {
             itemCard(this.body, i2, i2.key(this.day), true);
         }
         List<Item> overdue = new ArrayList<>();
         for (Item i3 : this.store.items()) {
             if (!i3.goal && i3.enabled && i3.scheduled && i3.repeat == 0 && LocalDate.parse(i3.start).isBefore(this.day) && !done(i3, i3.key(this.day)) && !this.store.status(i3.id, i3.key(this.day)).equals("skipped")) {
-                overdue.add(i3);
+                if(matchesPriority(i3)) overdue.add(i3);
             }
         }
+        orderTasks(overdue);
         if (!overdue.isEmpty()) {
             this.ui.space(this.body, 16);
             this.body.addView(this.ui.bold("UNFINISHED · EARLIER", 12, UI.RED));
@@ -395,9 +435,10 @@ public class MainActivity extends Activity {
         List<Item> parked = new ArrayList<>();
         for (Item i5 : this.store.items()) {
             if (!i5.goal && i5.project == 0 && (!i5.scheduled || !i5.enabled)) {
-                parked.add(i5);
+                if(matchesPriority(i5)) parked.add(i5);
             }
         }
+        orderTasks(parked);
         if (!parked.isEmpty()) {
             this.ui.space(this.body, 16);
             this.body.addView(this.ui.bold("UNSCHEDULED & PAUSED", 12, UI.MUTED));
@@ -479,6 +520,7 @@ public class MainActivity extends Activity {
         StringBuilder sbAppend;
         List<String> photos;
         LinearLayout linearLayoutCard = this.ui.card(parent);
+        priorityBadge(linearLayoutCard, store.isSignal(i));
         String status = this.store.status(i.id, key);
         final boolean finished = status.equals("done");
         LinearLayout row = this.ui.row();
@@ -601,6 +643,7 @@ public class MainActivity extends Activity {
                 }
             }
             LinearLayout c = this.ui.card(this.body);
+            priorityBadge(c,p.signal);
             c.addView(this.ui.bold(p.title, 23, UI.TEXT));
             if (!p.notes.isEmpty()) {
                 c.addView(this.ui.text(p.notes, 14, UI.MUTED));
@@ -655,7 +698,8 @@ public class MainActivity extends Activity {
             }
         });
         this.ui.space(this.body, 20);
-        heading("PROJECT", project.title, project.notes);
+        heading(project.signal ? "◆ SIGNAL PROJECT" : "NOISE PROJECT", project.title, project.notes);
+        body.addView(ui.text("Tasks follow this project unless you override them.",13,UI.MUTED));
         LinearLayout buttons = this.ui.row();
         this.body.addView(buttons);
         this.ui.weight(buttons, this.ui.button("+ Subtask", true, new Runnable() {
@@ -727,6 +771,8 @@ public class MainActivity extends Activity {
         LinearLayout form = form();
         final EditText title = this.ui.input(form, "Project name", p == null ? "" : p.title, false);
         final EditText notes = this.ui.input(form, "What are you building?", p != null ? p.notes : "", true);
+        final Switch signal = new Switch(this);signal.setText("Signal project");signal.setChecked(p != null && p.signal);form.addView(signal);
+        form.addView(ui.text("Off = Noise. Tasks follow this setting unless individually overridden.",13,UI.MUTED));
         final AlertDialog dialog = dialog(p == null ? "New project" : "Edit project", form, "Save", new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
@@ -736,7 +782,7 @@ public class MainActivity extends Activity {
         dialog.getButton(-1).setOnClickListener(new View.OnClickListener() {
             @Override // android.view.View.OnClickListener
             public final void onClick(View view) {
-                MainActivity.this.lambda$editProject$22(title, p, notes, dialog, view);
+                MainActivity.this.lambda$editProject$22(title, p, notes, signal, dialog, view);
             }
         });
         if (p != null) {
@@ -753,12 +799,12 @@ public class MainActivity extends Activity {
     static /* synthetic */ void lambda$editProject$21() {
     }
 
-    public /* synthetic */ void lambda$editProject$22(EditText title, Store.Project p, EditText notes, AlertDialog dialog, View v) {
+    public /* synthetic */ void lambda$editProject$22(EditText title, Store.Project p, EditText notes, Switch signal, AlertDialog dialog, View v) {
         if (title.getText().toString().trim().isEmpty()) {
             title.setError("Add a name");
             return;
         }
-        this.projectId = this.store.project(p == null ? 0L : p.id, title.getText().toString().trim(), notes.getText().toString().trim());
+        this.projectId = this.store.project(p == null ? 0L : p.id, title.getText().toString().trim(), notes.getText().toString().trim(), signal.isChecked());
         dialog.dismiss();
         render();
     }
@@ -1055,6 +1101,13 @@ public class MainActivity extends Activity {
         LinearLayout f = form();
         final EditText title = this.ui.input(f, goal ? "Goal" : "Task name", item.title, false);
         final EditText notes = this.ui.input(f, goal ? "What does success look like?" : "Notes", item.notes, true);
+        final Switch followProject = new Switch(this);
+        followProject.setText("Follow project priority");followProject.setChecked(item.project>0 && item.signalOverride==null);
+        final Switch signal = new Switch(this);signal.setText("Signal task");signal.setChecked(store.isSignal(item));
+        if(item.project>0) f.addView(followProject);
+        f.addView(signal);signal.setEnabled(!followProject.isChecked());
+        followProject.setOnCheckedChangeListener((button,checked)->{signal.setEnabled(!checked);if(checked)signal.setChecked(store.projectSignal(item.project));});
+        f.addView(ui.text("Off = Noise. Signal highlights work that moves your goals forward.",13,UI.MUTED));
         final EditText section = item.project > 0 ? this.ui.input(f, "Project section (e.g. Research / 3D printing)", item.section, false) : null;
         final Switch scheduled = new Switch(this);
         scheduled.setText(R.string.schedule_toggle);
@@ -1127,7 +1180,7 @@ public class MainActivity extends Activity {
         d.getButton(-1).setOnClickListener(new View.OnClickListener() {
             @Override // android.view.View.OnClickListener
             public final void onClick(View view) {
-                MainActivity.this.lambda$edit$45(title, repeat, goal, scheduled, timeChosen, date, minute, item, notes, enabled, section, d, view);
+                MainActivity.this.lambda$edit$45(title, repeat, goal, scheduled, timeChosen, date, minute, item, notes, enabled, section, followProject, signal, d, view);
             }
         });
     }
@@ -1171,7 +1224,7 @@ public class MainActivity extends Activity {
     static /* synthetic */ void lambda$edit$44() {
     }
 
-    public /* synthetic */ void lambda$edit$45(EditText editText, Spinner spinner, boolean z, Switch r14, boolean[] zArr, LocalDate[] localDateArr, int[] iArr, Item item, EditText editText2, Switch r20, EditText editText3, AlertDialog alertDialog, View view) {
+    public /* synthetic */ void lambda$edit$45(EditText editText, Spinner spinner, boolean z, Switch r14, boolean[] zArr, LocalDate[] localDateArr, int[] iArr, Item item, EditText editText2, Switch r20, EditText editText3, Switch followProject, Switch signal, AlertDialog alertDialog, View view) {
         String strTrim = editText.getText().toString().trim();
         if (strTrim.isEmpty()) {
             editText.setError("Add a title");
@@ -1191,6 +1244,7 @@ public class MainActivity extends Activity {
         if (item.id != 0) {
             Alarms.cancel(this, item);
         }
+        item.signalOverride = item.project>0 && followProject.isChecked() ? null : Boolean.valueOf(signal.isChecked());
         item.title = strTrim;
         item.notes = editText2.getText().toString().trim();
         item.goal = z;
