@@ -73,6 +73,13 @@ public class BackupTest {
         assertTrue(html.contains("Solar rover"));assertTrue(html.contains("Motor tested"));assertTrue(html.contains("Engineering"));
         assertArrayEquals(new byte[]{1,2,3,4},exported.get("photos/photo-1.jpg"));
     }
+    @Test public void exportAndroidCompatibilityFixture() throws Exception {
+        seed();java.nio.file.Path directory=java.nio.file.Paths.get("build/interop");Files.createDirectories(directory);
+        Files.write(directory.resolve("android.zip"),save());
+    }
+    @Test public void deterministicBackupsAllowChangeDetection() throws Exception {
+        seed();assertArrayEquals(save(),save());
+    }
     @Test public void malformedReferencesDoNotReplaceExistingData() throws Exception {
         seed();byte[] original=save();Map<String,byte[]> archive=unpack(original);
         JSONObject json=new JSONObject(new String(archive.get("steady.json"),StandardCharsets.UTF_8));

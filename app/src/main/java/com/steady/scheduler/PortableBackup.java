@@ -61,9 +61,9 @@ public final class PortableBackup {
             if (json.length > MAX_JSON || total > MAX_BYTES || media.size() >= MAX_FILES)
                 throw new IOException("Backup exceeds the supported size.");
             try (ZipOutputStream zip = new ZipOutputStream(output)) {
-                zip.putNextEntry(new ZipEntry("steady.json")); zip.write(json); zip.closeEntry();
+                ZipEntry manifest = new ZipEntry("steady.json"); manifest.setTime(0); zip.putNextEntry(manifest); zip.write(json); zip.closeEntry();
                 for (Map.Entry<String, File> photo : media.entrySet()) {
-                    zip.putNextEntry(new ZipEntry(photo.getKey()));
+                    ZipEntry entry = new ZipEntry(photo.getKey()); entry.setTime(0); zip.putNextEntry(entry);
                     Files.copy(photo.getValue().toPath(), zip); zip.closeEntry();
                 }
             }

@@ -101,6 +101,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         this.ui = new UI(this);
         this.store = Store.get(this);
+        signalFirst = AccountCloud.preferences(this).getBoolean("signalFirst", false);
         this.gym = new GymScreen(this, this.ui, new Runnable() {
             @Override // java.lang.Runnable
             public final void run() {
@@ -273,7 +274,7 @@ public class MainActivity extends Activity {
             button.setContentDescription("Filter: "+labels[n]);
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,ui.dp(48));lp.rightMargin=ui.dp(6);filters.addView(button,lp);
         }
-        Button order=ui.chip(signalFirst ? "Signal first ↓" : "Time ↓",false,()->{signalFirst=!signalFirst;render();});
+        Button order=ui.chip(signalFirst ? "Signal first ↓" : "Time ↓",false,()->{signalFirst=!signalFirst;AccountCloud.preferences(this).edit().putBoolean("signalFirst",signalFirst).apply();render();});
         order.setContentDescription(signalFirst ? "Sort: Signal first. Tap for time order." : "Sort: Time. Tap for Signal first.");
         filters.addView(order,new LinearLayout.LayoutParams(-2,ui.dp(48)));
         ui.space(body,12);
@@ -918,7 +919,7 @@ public class MainActivity extends Activity {
         this.ui.space(info, 8);
         info.addView(this.ui.text("Reminders loop using your alarm volume until you accept, skip or snooze, with a 10-minute automatic stop. When your phone is unlocked, Android may show a banner; tap it to open the swipe screen. Do Not Disturb and phone settings can affect sound. Test with your screen locked.", 14, UI.MUTED));
         this.ui.space(info, 12);
-        info.addView(this.ui.text("Your data stays on this phone. Photos are copied into the app. There is no account or cloud sync in this first version. Uninstalling or clearing app storage deletes your data. Journal exports include photos in a ZIP; text-only export is also available. Use a full backup below to transfer your data offline.", 14, UI.MUTED));
+        info.addView(this.ui.text("Your data stays on this phone. Photos are copied into the app. Guest data stays local. Signed-in accounts can transfer data with Sync now. Uninstalling or clearing app storage deletes your data. Journal exports include photos in a ZIP; text-only export is also available. Use a full backup below to transfer your data offline.", 14, UI.MUTED));
         this.ui.space(info, 12);
         info.addView(this.ui.text("Streaks count completed daily tasks, not accepted reminders. Yesterday's streak remains alive while today is still open. Past days can be completed manually; future days cannot.", 14, UI.MUTED));
         this.ui.space(this.body, 16);
@@ -937,6 +938,7 @@ public class MainActivity extends Activity {
             }
         });
         this.ui.space(this.body, 14);
+        AccountScreen.add(this, this.ui, this.body);
         BackupScreen.add(this, this.ui, this.body);
         this.body.addView(this.ui.text("Steady " + BuildConfig.VERSION_NAME, 12, UI.MUTED));
     }
@@ -1529,6 +1531,11 @@ public class MainActivity extends Activity {
         }
         this.projectId = p;
         render();
+    }
+
+    void accountRefreshed() {
+        signalFirst = AccountCloud.preferences(this).getBoolean("signalFirst", false);
+        afterBackupImport();
     }
 
     private void afterBackupImport() {

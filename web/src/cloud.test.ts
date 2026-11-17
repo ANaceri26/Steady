@@ -1,0 +1,9 @@
+import {it,expect,vi,beforeEach} from 'vitest';
+const api=vi.hoisted(()=>({auth:{getUser:vi.fn()},from:vi.fn(),storage:{from:vi.fn()},rpc:vi.fn()}));
+vi.mock('@supabase/supabase-js',()=>({createClient:()=>api}));
+import {sync} from './cloud';
+import {empty} from './model';
+beforeEach(()=>{vi.clearAllMocks();api.auth.getUser.mockResolvedValue({data:{user:{id:'owner'}},error:null})});
+it('refuses a different signed-in account before reading or uploading',async()=>{api.auth.getUser.mockResolvedValue({data:{user:{id:'another-user'}},error:null});await expect(sync('owner',{workspace:empty(),revision:0,dirty:true})).rejects.toThrow('Sign in again');expect(api.from).not.toHaveBeenCalled();expect(api.storage.from).not.toHaveBeenCalled()});
+it('refuses to overwrite remote edits when this device is dirty',async()=>{api.from.mockReturnValue({select:()=>({eq:()=>({maybeSingle:async()=>({data:{revision:2,object_path:'owner/old.zip'},error:null})})})});await expect(sync('owner',{workspace:empty(),revision:1,dirty:true})).rejects.toThrow('SYNC_CONFLICT');expect(api.storage.from).not.toHaveBeenCalled();expect(api.rpc).not.toHaveBeenCalled()});
+it('removes an uncommitted upload after a revision race',async()=>{api.from.mockReturnValue({select:()=>({eq:()=>({maybeSingle:async()=>({data:{revision:1,object_path:'owner/old.zip'},error:null})})})});const upload=vi.fn().mockResolvedValue({error:null}),remove=vi.fn().mockResolvedValue({error:null});api.storage.from.mockReturnValue({upload,remove});api.rpc.mockResolvedValue({error:new Error('SYNC_CONFLICT')});const local={workspace:empty(),revision:1,dirty:true};await expect(sync('owner',local)).rejects.toThrow('SYNC_CONFLICT');expect(local.dirty).toBe(true);expect(local.revision).toBe(1);expect(remove).toHaveBeenCalledTimes(1);expect(remove.mock.calls[0][0][0]).not.toBe('owner/old.zip')});

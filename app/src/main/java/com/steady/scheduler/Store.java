@@ -28,7 +28,24 @@ public final class Store extends SQLiteOpenHelper {
     }
 
     private Store(Context c) {
-        super(c, "steady.db", (SQLiteDatabase.CursorFactory) null, 5);
+        super(c, databaseName(c), (SQLiteDatabase.CursorFactory) null, 5);
+    }
+
+    static String workspace(android.content.Context c) {
+        return c.getSharedPreferences("steady-workspace", 0).getString("active", "guest");
+    }
+
+    private static String databaseName(android.content.Context c) {
+        String owner = workspace(c);
+        return owner.equals("guest") ? "steady.db" : "steady-" + java.util.UUID.fromString(owner) + ".db";
+    }
+
+    static synchronized void activate(android.content.Context c, String owner) {
+        if (!owner.equals("guest")) java.util.UUID.fromString(owner);
+        Store previous = get(c);
+        Alarms.cancelTransferred(c, previous.items(), previous.snoozes());
+        previous.close(); instance = null;
+        c.getSharedPreferences("steady-workspace", 0).edit().putString("active", owner).commit();
     }
 
     @Override // android.database.sqlite.SQLiteOpenHelper
