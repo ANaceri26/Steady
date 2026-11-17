@@ -139,6 +139,17 @@ public final class Alarms {
         }
     }
 
+    static void cancelTransferred(Context c, java.util.List<Item> oldItems, java.util.List<String[]> oldSnoozes) {
+        AlarmManager manager = c.getSystemService(AlarmManager.class);
+        for (Item item : oldItems) {
+            AlarmService.dismissItem(item.id);
+            manager.cancel(scheduled(c, item.id, "", false, 0L));
+        }
+        for (String[] snooze : oldSnoozes)
+            manager.cancel(scheduled(c, Long.parseLong(snooze[0]), snooze[1], true, 0L));
+        c.getSystemService(NotificationManager.class).cancelAll();
+    }
+
     public static boolean snooze(Context c, Item item, String period) {
         if (!exact(c)) {
             return false;

@@ -918,7 +918,7 @@ public class MainActivity extends Activity {
         this.ui.space(info, 8);
         info.addView(this.ui.text("Reminders loop using your alarm volume until you accept, skip or snooze, with a 10-minute automatic stop. When your phone is unlocked, Android may show a banner; tap it to open the swipe screen. Do Not Disturb and phone settings can affect sound. Test with your screen locked.", 14, UI.MUTED));
         this.ui.space(info, 12);
-        info.addView(this.ui.text("Your data stays on this phone. Photos are copied into the app. There is no account or cloud sync in this first version. Uninstalling or clearing app storage deletes your data. Journal exports include photos in a ZIP; text-only export is also available. Full backup and restore are not included yet.", 14, UI.MUTED));
+        info.addView(this.ui.text("Your data stays on this phone. Photos are copied into the app. There is no account or cloud sync in this first version. Uninstalling or clearing app storage deletes your data. Journal exports include photos in a ZIP; text-only export is also available. Use a full backup below to transfer your data offline.", 14, UI.MUTED));
         this.ui.space(info, 12);
         info.addView(this.ui.text("Streaks count completed daily tasks, not accepted reminders. Yesterday's streak remains alive while today is still open. Past days can be completed manually; future days cannot.", 14, UI.MUTED));
         this.ui.space(this.body, 16);
@@ -937,7 +937,8 @@ public class MainActivity extends Activity {
             }
         });
         this.ui.space(this.body, 14);
-        this.body.addView(this.ui.text("Steady 0.3 · Android preview", 12, UI.MUTED));
+        BackupScreen.add(this, this.ui, this.body);
+        this.body.addView(this.ui.text("Steady " + BuildConfig.VERSION_NAME, 12, UI.MUTED));
     }
 
     public /* synthetic */ void lambda$setup$29() {
@@ -1530,6 +1531,13 @@ public class MainActivity extends Activity {
         render();
     }
 
+    private void afterBackupImport() {
+        projectId = 0;
+        journalScreen = new JournalScreen(this, ui, store, this::render, this::exportJournalPhotos, this::lambda$journal$26);
+        gym = new GymScreen(this, ui, this::render);
+        render();
+    }
+
     public void exportJournalPhotos() {
         startActivityForResult(new Intent("android.intent.action.CREATE_DOCUMENT").addCategory("android.intent.category.OPENABLE").setType("application/zip").putExtra("android.intent.extra.TITLE", "Steady-Journal-" + LocalDate.now() + ".zip"), EXPORT_PHOTOS);
     }
@@ -1559,6 +1567,10 @@ public class MainActivity extends Activity {
             return;
         }
         final Uri uri = data.getData();
+        if (request == BackupScreen.SAVE || request == BackupScreen.OPEN) {
+            BackupScreen.handle(this, store, request, uri, this::afterBackupImport);
+            return;
+        }
         if (request == ALARM_FILE) {
             toast("Importing alarm sound…");
             ExecutorService worker = Executors.newSingleThreadExecutor();

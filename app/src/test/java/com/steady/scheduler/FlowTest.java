@@ -83,6 +83,23 @@ public class FlowTest {
         List<EditText> names=fields(review);assertEquals(2,names.size());names.get(1).setText("");review.getButton(-1).performClick();assertTrue(store.items().isEmpty());
         names.get(1).setText("Training");review.getButton(-1).performClick();assertEquals(2,store.items().size());assertEquals(540,store.items().get(0).minute);assertEquals(570,store.items().get(1).minute);
     }
+    @Test public void journalAndBackupButtonsOpenPickersAndImportRequiresConfirmation() throws Exception {
+        Field tab=MainActivity.class.getDeclaredField("tab");tab.setAccessible(true);
+        tab.setInt(a,3);a.render();
+        buttons(a.findViewById(android.R.id.content),"Export all").get(0).performClick();
+        android.content.Intent export=Shadows.shadowOf(a).getNextStartedActivityForResult().intent;
+        assertEquals(android.content.Intent.ACTION_CREATE_DOCUMENT,export.getAction());assertEquals("application/zip",export.getType());
+        tab.setInt(a,5);a.render();
+        buttons(a.findViewById(android.R.id.content),"Save full backup").get(0).performClick();
+        assertEquals(BackupScreen.SAVE,Shadows.shadowOf(a).getNextStartedActivityForResult().requestCode);
+        buttons(a.findViewById(android.R.id.content),"Import backup").get(0).performClick();
+        assertEquals(BackupScreen.OPEN,Shadows.shadowOf(a).getNextStartedActivityForResult().requestCode);
+        Item item=new Item();item.title="Keep me";store.save(item);
+        a.onActivityResult(BackupScreen.OPEN,android.app.Activity.RESULT_OK,new android.content.Intent().setData(android.net.Uri.parse("content://test/backup")));
+        AlertDialog confirmation=ShadowAlertDialog.getLatestAlertDialog();assertTrue(confirmation.isShowing());
+        assertEquals("Replace and import",confirmation.getButton(-1).getText().toString());
+        confirmation.getButton(-2).performClick();assertEquals("Keep me",store.items().get(0).title);
+    }
     @Test public void allMainTabsRender() throws Exception {
         Field tab=MainActivity.class.getDeclaredField("tab");tab.setAccessible(true);Method render=MainActivity.class.getDeclaredMethod("render");render.setAccessible(true);
         for(int i=0;i<6;i++){tab.setInt(a,i);render.invoke(a);assertNotNull(a.findViewById(android.R.id.content));}
