@@ -10,12 +10,12 @@ android {
         applicationId 'com.steady.scheduler.preview2'
         minSdk 26
         targetSdk 35
-        versionCode 10
-        versionName '0.6.0'
+        versionCode 11
+        versionName '1.0.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'String', 'SUPABASE_URL', quoted(steadyConfig.getProperty('steady.supabase.url', ''))
         buildConfigField 'String', 'SUPABASE_KEY', quoted(steadyConfig.getProperty('steady.supabase.key', ''))
-        buildConfigField 'String', 'WEB_URL', quoted(steadyConfig.getProperty('steady.web.url', ''))
+        buildConfigField 'String', 'WEB_URL', quoted(steadyConfig.getProperty('steady.web.url', 'https://steady.naceriabderrahmene.workers.dev/'))
     }
     buildFeatures { buildConfig true }
     flavorDimensions 'design'
@@ -34,7 +34,7 @@ android {
         }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    buildTypes { debug { applicationIdSuffix '.dev'; versionNameSuffix '-preview' } }
+    buildTypes { debug { applicationIdSuffix '.dev' } }
     testOptions { unitTests.includeAndroidResources = true }
 }
 dependencies {

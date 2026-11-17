@@ -4,7 +4,7 @@
 
 The React/Vite web app and Android preview use Supabase email/password authentication, a private Storage bucket, and one revisioned workspace record per account. The apps remain usable locally. Web automatically attempts synchronization after changes and on focus; Android has an explicit **Settings → Sync now** action. This is snapshot synchronization, not field-by-field merging. Conflicting device edits require a backup and an explicit choice before replacement.
 
-The web app is currently a local preview, not a public deployment. Version 1.0.0 and its first GitHub release must wait for successful real-account, cross-device and deployment tests. No historical preview releases have been created.
+The web app is publicly hosted at https://steady.naceriabderrahmene.workers.dev/. The user confirmed email login and Android/web synchronization in testing. Version 1.0.0 is the first GitHub release. The downloadable Android APK uses the existing debug signing identity so it updates installed demos; it is not a Google Play production artifact.
 
 ## Local configuration
 
@@ -48,9 +48,9 @@ Run `npm ci`, `npm run dev -- --port 5174`, `npm test`, and `npm run build` from
 - Cloud files contain private data and are not end-to-end encrypted. Storage access is limited to the owner account. Offline ZIPs are not encrypted.
 - Native reminders and permissions stay on Android. The browser does not ring background alarms.
 
-## Release gate for v1.0.0
+## Validation and production follow-up
 
-Before tagging or publishing:
+Retain these checks for future releases. Automated tests and the user-reported synchronization test do not replace all production checks:
 
 - Verify email signup, confirmation, sign-in, password reset, expiry/refresh, and sign-out on real devices.
 - Use two test accounts to verify one cannot read or replace the other's data or files.

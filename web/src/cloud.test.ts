@@ -1,4 +1,5 @@
 import {it,expect,vi,beforeEach} from 'vitest';
+vi.hoisted(()=>{vi.stubEnv('VITE_SUPABASE_URL','https://test.supabase.co');vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY','test-public-key')});
 const api=vi.hoisted(()=>({auth:{getUser:vi.fn()},from:vi.fn(),storage:{from:vi.fn()},rpc:vi.fn()}));
 vi.mock('@supabase/supabase-js',()=>({createClient:()=>api}));
 import {sync} from './cloud';
